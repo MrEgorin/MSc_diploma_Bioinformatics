@@ -1,0 +1,74 @@
+gmx_gpu_slurm_restart_mod.pbs:
+#!/bin/bash
+#SBATCH --job-name=md_rna             # Назва завдання тільки тут і без розширення!
+#SBATCH --partition=gmx_gpu          # Розділ для CPU
+#SBATCH --ntasks=12                  # Кількість процесів більше не треба
+#SBATCH --time=400:00:00              # Обмеження за часом скільки треба
+#SBATCH --output=gromacs_out_%j.log  # Файл логів
+
+sleep 5
+
+# Завантаження модулів та налаштування середовища
+source /usr/local/gromacs/bin/GMXRC
+
+# Ім'я .tpr файлу відповідає назві завдання
+tpr_file="${SLURM_JOB_NAME}.tpr"
+
+date
+
+# Шукаємо будь-який .cpt з префіксом output
+if ls output*.cpt 1> /dev/null 2>&1; then
+    echo "Знайдено checkpoint → продовжуємо"
+    gmx_mpi mdrun -s "$tpr_file" -deffnm output -cpi output.cpt -ntomp $SLURM_NTASKS -nb gpu -pme gpu -bonded gpu -pin on
+else
+    echo "Checkpoint НЕ знайдено → СТАРТ З НУЛЯ (500 нс)"
+    gmx_mpi mdrun -s "$tpr_file" -deffnm output -ntomp $SLURM_NTASKS -nb gpu -pme gpu -bonded gpu -pin on
+fi
+
+date
+
+md_500ns.mdp:
+title                   = Production 100 ns
+integrator              = md
+dt                      = 0.002
+nsteps                  = 250000000          ; 500 ns
+
+nstxout-compressed      = 25000              ; 50 ps
+nstenergy               = 25000
+nstlog                  = 25000
+
+continuation            = yes
+constraint_algorithm    = lincs
+constraints             = h-bonds
+lincs_iter              = 1
+lincs_order             = 4
+
+cutoff-scheme           = Verlet
+nstlist                 = 40
+rlist                   = 1.0
+rcoulomb                = 1.0
+rvdw                    = 1.0
+
+coulombtype             = PME
+vdwtype                 = cutoff
+vdw-modifier            = none               ; ← ЦЕЙ РЯДОК ЗНІМАЄ ОСТАННІЙ WARNING
+
+fourierspacing          = 0.12
+ewald-rtol              = 1e-5
+pme-order               = 4
+
+DispCorr                = EnerPres
+
+tcoupl                  = V-rescale
+tc-grps                 = System
+tau_t                   = 1.0
+ref_t                   = 309.6
+
+pcoupl                  = Parrinello-Rahman
+pcoupltype              = isotropic
+tau_p                   = 5.0
+ref_p                   = 1.0
+compressibility         = 4.5e-5
+
+gen-vel                 = no
+
