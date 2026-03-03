@@ -1,0 +1,52 @@
+#!/bin/bash
+#SBATCH --job-name=npt                # Назва завдання тільки тут і без розширення!
+#SBATCH --partition=gmx_gpu          # Розділ для CPU
+#SBATCH --ntasks=12                  # Кількість процесів більше не треба
+#SBATCH --time=22:00:00              # Обмеження за часом скільки треба
+#SBATCH --output=gromacs_out_%j.log  # Файл логів
+
+sleep 5
+
+# Завантаження модулів та налаштування середовища
+source /usr/local/gromacs/bin/GMXRC
+
+# Ім'я .tpr файлу відповідає назві завдання
+tpr_file="${SLURM_JOB_NAME}.tpr"
+
+
+
+gmx_mpi mdrun -v -deffnm npt -ntomp "$SLURM_NTASKS"
+
+
+
+npt_equil.mdp:
+title                   = NPT equilibration
+define                  = -DPOSRES
+integrator              = md
+nsteps                  = 1000000           ; 2 ns
+dt                      = 0.002
+nstxout-compressed      = 10000             ; кожні 20 ps
+nstenergy               = 10000
+continuation            = yes
+constraint_algorithm    = lincs
+constraints             = h-bonds
+lincs_iter              = 1
+lincs_order             = 4
+cutoff-scheme           = Verlet
+nstlist                 = 20
+rlist                   = 1.0
+rcoulomb                = 1.0
+rvdw                    = 1.0
+DispCorr                = EnerPres
+
+tcoupl                  = V-rescale
+tc-grps                 = System
+tau_t                   = 1.0
+ref_t                   = 309.6
+
+pcoupl                  = Parrinello-Rahman
+pcoupltype              = isotropic
+tau_p                   = 5.0
+ref_p                   = 1.0
+compressibility         = 4.5e-5
+refcoord-scaling        = com
