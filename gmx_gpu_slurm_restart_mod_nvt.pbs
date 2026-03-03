@@ -1,0 +1,47 @@
+gmx_gpu_slurm_restart_mod_nvt.pbs:
+#!/bin/bash
+#SBATCH --job-name=nvt                # Назва завдання тільки тут і без розширення!
+#SBATCH --partition=gmx_gpu          # Розділ для CPU
+#SBATCH --ntasks=12                  # Кількість процесів більше не треба
+#SBATCH --time=72:00:00              # Обмеження за часом скільки треба
+#SBATCH --output=gromacs_out_%j.log  # Файл логів
+
+sleep 5
+
+# Завантаження модулів та налаштування середовища
+source /usr/local/gromacs/bin/GMXRC
+
+# Ім'я .tpr файлу відповідає назві завдання
+tpr_file="${SLURM_JOB_NAME}.tpr"
+
+
+
+gmx_mpi mdrun -deffnm nvt -ntomp "$SLURM_NTASKS"
+
+nvt_equil.mdp:
+title                   = NVT equilibration
+define                  = -DPOSRES
+integrator              = md
+nsteps                  = 500000            ; 1 ns
+dt                      = 0.002
+nstxout-compressed      = 5000              ; кожні 10 ps
+nstenergy               = 5000
+continuation            = no
+constraint_algorithm    = lincs
+constraints             = h-bonds
+lincs_iter              = 1
+lincs_order             = 4
+cutoff-scheme           = Verlet
+nstlist                 = 20
+rlist                   = 1.0
+rcoulomb                = 1.0
+rvdw                    = 1.0
+DispCorr                = EnerPres
+
+tcoupl                  = V-rescale
+tc-grps                 = System
+tau_t                   = 1.0
+ref_t                   = 309.6
+gen_vel                 = yes
+gen_temp                = 309.6
+gen_seed                = -1
